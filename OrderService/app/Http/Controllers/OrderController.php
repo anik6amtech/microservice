@@ -4,62 +4,57 @@ namespace App\Http\Controllers;
 
 use App\Models\Order;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Http;
 
 class OrderController extends Controller
 {
-    /**
-     * Display a listing of the resource.
-     */
-    public function index()
-    {
-        //
-    }
-
-    /**
-     * Show the form for creating a new resource.
-     */
-    public function create()
-    {
-        //
-    }
-
-    /**
-     * Store a newly created resource in storage.
-     */
     public function store(Request $request)
     {
-        //
+        $token = $request->header('Authorization');
+
+        $user = $this->getUser($token);
+        $product = $this->getProduct($request->product_id);
+
+        if ($user && $product) {
+
+            $order = Order::create([
+                'user_id' => $user['id'],
+                'product_id' => $product['id'],
+                'quantity' => $request->quantity,
+                'total_price' => $product['price'] * $request->quantity,
+            ]);
+
+
+            return response(['order' => $order], 201);
+        } else {
+            if (!$user) {
+                return response(['error' => 'User verification failed'], $user->status());
+            } elseif (!$product) {
+                return response(['error' => 'product verification failed'], $product->status());
+            } else {
+                return response(['error' => 'product / User not found'], 404);
+            }
+        }
     }
 
-    /**
-     * Display the specified resource.
-     */
-    public function show(Order $order)
+    private function getUser($token)
     {
-        //
+        $response = Http::withHeaders(['Authorization' => $token])->get('http://127.0.0.1:8000/api/verify-user')->json('user');
+
+        return $response;
+    }
+    private function getProduct($product_id)
+    {
+        $product = Http::get('http://127.0.0.1:8002/api/products/' . $product_id)->json('product');
+
+
+        return $product;
     }
 
-    /**
-     * Show the form for editing the specified resource.
-     */
-    public function edit(Order $order)
-    {
-        //
-    }
+    private function updateStock(){
 
-    /**
-     * Update the specified resource in storage.
-     */
-    public function update(Request $request, Order $order)
-    {
-        //
     }
+    private function notifyUser(){
 
-    /**
-     * Remove the specified resource from storage.
-     */
-    public function destroy(Order $order)
-    {
-        //
     }
 }

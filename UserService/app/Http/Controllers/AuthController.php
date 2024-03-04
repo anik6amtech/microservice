@@ -79,4 +79,15 @@ class AuthController extends Controller
             return response($response, 404);
         }
     }
+
+    public function verifyUser(Request $request)
+    {
+        $user = Auth::user();
+
+        if ($user) {
+            return response(['user' => $user], 200);
+        } else {
+            return response(['error' => 'User not authenticated'], 401);
+        }
+    }
 }
