@@ -3,11 +3,17 @@
 namespace App\Http\Controllers;
 
 use App\Models\Order;
+use App\RabbitMQService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
 
 class OrderController extends Controller
 {
+
+    protected $rabbitMQService;
+    public function __construct(RabbitMQService $rabbitMQService) {
+        $this->rabbitMQService = $rabbitMQService;
+    }
     public function store(Request $request)
     {
         $token = $request->header('Authorization');
@@ -24,7 +30,7 @@ class OrderController extends Controller
                 'total_price' => $product['price'] * $request->quantity,
             ]);
 
-
+            $this->rabbitMQService->publish(json_encode($order),$order->id);
             return response(['order' => $order], 201);
         } else {
             if (!$user) {
@@ -45,7 +51,7 @@ class OrderController extends Controller
     }
     private function getProduct($product_id)
     {
-        $product = Http::get('http://127.0.0.1:8002/api/products/' . $product_id)->json('product');
+        $product = Http::get('http://127.0.0.1:8001/api/products/' . $product_id)->json('product');
 
 
         return $product;
