@@ -2,8 +2,11 @@
 
 namespace App\Http\Controllers;
 
+use App\Jobs\ProcessOrder;
 use App\Models\Order;
 use App\RabbitMQService;
+use App\SnsService;
+use Aws\Sns\SnsClient;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
 
@@ -11,10 +14,10 @@ class OrderController extends Controller
 {
 
     protected $rabbitMQService;
-    public function __construct(RabbitMQService $rabbitMQService) {
-        $this->rabbitMQService = $rabbitMQService;
-    }
-    public function store(Request $request)
+    // public function __construct(SnsService $rabbitMQService) {
+    //     $this->rabbitMQService = $rabbitMQService;
+    // }
+    public function store(Request $request,SnsService $sns)
     {
         $token = $request->header('Authorization');
 
@@ -30,7 +33,10 @@ class OrderController extends Controller
                 'total_price' => $product['price'] * $request->quantity,
             ]);
 
-            $this->rabbitMQService->publish(json_encode($order),$order->id);
+            $this->publish($order );
+            // $sns->publish('arn:aws:sns:ap-southeast-1:533267049734:order_complete', 'https');
+            // ProcessOrder::dispatch($order);
+            // $this->rabbitMQService->publish(json_encode($order));
             return response(['order' => $order], 201);
         } else {
             if (!$user) {
@@ -57,8 +63,20 @@ class OrderController extends Controller
         return $product;
     }
 
-    private function updateStock(){
+    public function publish($order ){
+        $snsClient = new SnsClient([
+            'version' => 'latest',
+            'region' => env('AWS_DEFAULT_REGION'),
+            'credentials' => [
+                'key' => env('AWS_ACCESS_KEY_ID'),
+                'secret' => env('AWS_SECRET_ACCESS_KEY'),
+            ],
+        ]);
 
+        $snsClient->publish([
+            'TopicArn' => 'arn:aws:sns:ap-southeast-1:533267049734:order_complete',
+            'Message' => json_encode($order),
+        ]);
     }
     private function notifyUser(){
 
